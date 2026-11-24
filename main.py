@@ -1,4 +1,3 @@
-
 import os
 import json
 import base64
@@ -267,4 +266,3 @@ Return the required structured JSON response only.
             status_code=500,
             detail="Gemini analysis failed. Check backend logs and API configuration."
         )
-        
