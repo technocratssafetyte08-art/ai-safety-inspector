@@ -123,8 +123,12 @@ SCHEMA = {
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "AI Safety Inspector", "ai": "Gemini"}
-
+    return {
+        "status": "ok",
+        "service": "AI Safety Inspector",
+        "ai": "Gemini",
+        "gemini_key_configured": bool(os.getenv("GEMINI_API_KEY"))
+    }
 
 @app.post("/analyse", response_model=AnalyseResponse)
 def analyse(req: AnalyseRequest):
