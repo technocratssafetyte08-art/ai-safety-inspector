@@ -3,6 +3,7 @@ import os
 import json
 import base64
 import re
+import time
 from typing import List
 
 from fastapi import FastAPI, HTTPException
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field
 from google import genai
 
 
-app = FastAPI(title="AI Safety Inspector API", version="0.3.0")
+app = FastAPI(title="AI Safety Inspector API", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,8 +63,13 @@ SCHEMA = {
     "properties": {
         "overall_risk": {
             "type": "STRING",
-            "enum": ["High", "Medium", "Low",
-                     "No clear visible hazard", "Unable to assess"]
+            "enum": [
+                "High",
+                "Medium",
+                "Low",
+                "No clear visible hazard",
+                "Unable to assess"
+            ]
         },
         "summary_en": {"type": "STRING"},
         "summary_hi": {"type": "STRING"},
@@ -78,8 +84,12 @@ SCHEMA = {
                     "category": {"type": "STRING"},
                     "risk": {
                         "type": "STRING",
-                        "enum": ["High", "Medium", "Low",
-                                 "Needs verification"]
+                        "enum": [
+                            "High",
+                            "Medium",
+                            "Low",
+                            "Needs verification"
+                        ]
                     },
                     "observation_en": {"type": "STRING"},
                     "observation_hi": {"type": "STRING"},
@@ -101,11 +111,20 @@ SCHEMA = {
                     "verification_needed": {"type": "BOOLEAN"}
                 },
                 "required": [
-                    "id", "title_en", "title_hi", "category", "risk",
-                    "observation_en", "observation_hi",
-                    "consequence_en", "consequence_hi",
-                    "precautions_en", "precautions_hi",
-                    "bbox", "confidence", "verification_needed"
+                    "id",
+                    "title_en",
+                    "title_hi",
+                    "category",
+                    "risk",
+                    "observation_en",
+                    "observation_hi",
+                    "consequence_en",
+                    "consequence_hi",
+                    "precautions_en",
+                    "precautions_hi",
+                    "bbox",
+                    "confidence",
+                    "verification_needed"
                 ]
             }
         },
@@ -119,8 +138,12 @@ SCHEMA = {
         }
     },
     "required": [
-        "overall_risk", "summary_en", "summary_hi",
-        "findings", "limitations_en", "limitations_hi"
+        "overall_risk",
+        "summary_en",
+        "summary_hi",
+        "findings",
+        "limitations_en",
+        "limitations_hi"
     ]
 }
 
@@ -131,7 +154,9 @@ def health():
         "status": "ok",
         "service": "AI Safety Inspector",
         "ai": "Gemini",
-        "gemini_key_configured": bool(os.getenv("GEMINI_API_KEY"))
+        "gemini_key_configured": bool(
+            os.getenv("GEMINI_API_KEY")
+        )
     }
 
 
@@ -167,7 +192,11 @@ def analyse(req: AnalyseRequest):
             )
 
         mime_type = mime_match.group(1)
-        image_bytes = base64.b64decode(encoded, validate=True)
+
+        image_bytes = base64.b64decode(
+            encoded,
+            validate=True
+        )
 
         if len(image_bytes) > 10 * 1024 * 1024:
             raise HTTPException(
@@ -213,48 +242,94 @@ Language: {req.language}
 Return structured JSON only.
 """
 
-        response = client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
-            contents=[
-                prompt,
-                genai.types.Part.from_bytes(
-                    data=image_bytes,
-                    mime_type=mime_type
+        # Gemini request with one automatic retry for temporary 503 errors
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=os.getenv(
+                        "GEMINI_MODEL",
+                        "gemini-3.8-flash"
+                    ),
+                    contents=[
+                        prompt,
+                        genai.types.Part.from_bytes(
+                            data=image_bytes,
+                            mime_type=mime_type
+                        )
+                    ],
+                    config=genai.types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_json_schema=SCHEMA,
+                        temperature=0.2,
+                        max_output_tokens=8192
+                    )
                 )
-            ],
-            config=genai.types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_json_schema=SCHEMA,
-                temperature=0.2,
-                max_output_tokens=8192
-            )
-        )
+
+                break
+
+            except Exception as e:
+                error_text = str(e).lower()
+
+                if attempt == 0 and (
+                    "503" in error_text or
+                    "unavailable" in error_text
+                ):
+                    print(
+                        "Gemini temporarily unavailable. "
+                        "Retrying in 2 seconds..."
+                    )
+                    time.sleep(2)
+                    continue
+
+                raise
 
         if not response.text:
-            raise ValueError("Gemini returned an empty response.")
+            raise ValueError(
+                "Gemini returned an empty response."
+            )
 
         data = json.loads(response.text)
 
-        for i, finding in enumerate(data.get("findings", []), start=1):
+        for i, finding in enumerate(
+            data.get("findings", []),
+            start=1
+        ):
             finding["id"] = i
-            bbox = finding.get("bbox", [0, 0, 0, 0])
+
+            bbox = finding.get(
+                "bbox",
+                [0, 0, 0, 0]
+            )
 
             if (
                 not isinstance(bbox, list)
                 or len(bbox) != 4
-                or any(not isinstance(v, (int, float)) for v in bbox)
+                or any(
+                    not isinstance(v, (int, float))
+                    for v in bbox
+                )
             ):
                 finding["bbox"] = [0, 0, 0, 0]
+
             else:
                 x, y, w, h = [
-                    max(0, min(1, float(v))) for v in bbox
+                    max(0, min(1, float(v)))
+                    for v in bbox
                 ]
+
                 finding["bbox"] = [
-                    x, y, min(w, 1-x), min(h, 1-y)
+                    x,
+                    y,
+                    min(w, 1 - x),
+                    min(h, 1 - y)
                 ]
 
             finding["confidence"] = max(
-                0, min(1, float(finding.get("confidence", 0)))
+                0,
+                min(
+                    1,
+                    float(finding.get("confidence", 0))
+                )
             )
 
         return data
@@ -264,16 +339,38 @@ Return structured JSON only.
 
     except Exception as e:
         print("Gemini analysis error:", str(e))
+
         error_text = str(e).lower()
 
-        if "429" in error_text or "resource_exhausted" in error_text:
+        if (
+            "429" in error_text
+            or "resource_exhausted" in error_text
+        ):
             raise HTTPException(
                 status_code=429,
-                detail="Gemini usage limit reached. Check your API quota."
+                detail=(
+                    "Gemini usage limit reached. "
+                    "Please check your API quota."
+                )
+            )
+
+        if (
+            "503" in error_text
+            or "unavailable" in error_text
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "AI service is temporarily busy. "
+                    "Please try again in a minute."
+                )
             )
 
         raise HTTPException(
             status_code=500,
-            detail="Gemini analysis failed. Check Render logs."
+            detail=(
+                "Gemini analysis failed. "
+                "Please check backend logs."
+            )
         )
         
