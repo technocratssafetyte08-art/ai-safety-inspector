@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://ai-safety-inspector-anw6.onrender.com";
 let selectedFile=null, imageUrl=null, lastResult=null, lang="en";
 const $=id=>document.getElementById(id);
 const translations={
