@@ -214,7 +214,7 @@ Return structured JSON only.
 """
 
         response = client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+            model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
             contents=[
                 prompt,
                 genai.types.Part.from_bytes(
