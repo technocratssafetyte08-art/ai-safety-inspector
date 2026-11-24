@@ -1,14 +1,17 @@
+
 import os
 import json
 import base64
 import re
 from typing import List
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from google import genai
 
-app = FastAPI(title="AI Safety Inspector API", version="0.2.0")
+
+app = FastAPI(title="AI Safety Inspector API", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -75,7 +78,8 @@ SCHEMA = {
                     "category": {"type": "STRING"},
                     "risk": {
                         "type": "STRING",
-                        "enum": ["High", "Medium", "Low", "Needs verification"]
+                        "enum": ["High", "Medium", "Low",
+                                 "Needs verification"]
                     },
                     "observation_en": {"type": "STRING"},
                     "observation_hi": {"type": "STRING"},
@@ -130,6 +134,7 @@ def health():
         "gemini_key_configured": bool(os.getenv("GEMINI_API_KEY"))
     }
 
+
 @app.post("/analyse", response_model=AnalyseResponse)
 def analyse(req: AnalyseRequest):
 
@@ -138,7 +143,7 @@ def analyse(req: AnalyseRequest):
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Server is missing GEMINI_API_KEY."
+            detail="Backend environment variable GEMINI_API_KEY is missing."
         )
 
     if not req.image_data_url.startswith("data:image/"):
@@ -150,12 +155,15 @@ def analyse(req: AnalyseRequest):
     try:
         header, encoded = req.image_data_url.split(",", 1)
 
-        mime_match = re.match(r"data:(image/[a-zA-Z0-9.+-]+);base64$", header)
+        mime_match = re.match(
+            r"data:(image/[a-zA-Z0-9.+-]+);base64$",
+            header
+        )
 
         if not mime_match:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid image format. Please upload a base64 image."
+                detail="Invalid image format."
             )
 
         mime_type = mime_match.group(1)
@@ -170,40 +178,39 @@ def analyse(req: AnalyseRequest):
         client = genai.Client(api_key=api_key)
 
         prompt = f"""
-You are a cautious occupational health and safety visual screening assistant.
+You are a professional occupational health and safety visual
+screening assistant.
 
-Inspect only what is visibly supported by this workplace photograph.
+Inspect only hazards clearly visible in this workplace photograph.
 
 Site: {req.site}
 Department: {req.department}
 Location: {req.location}
 Contractor: {req.contractor}
 
-Return practical English and Hindi findings.
+Identify visible unsafe conditions and PPE issues only when
+supported by the photograph.
 
-Identify visible unsafe conditions and missing or incorrect PPE only
-when clearly observable.
+Do not assume that permits, LOTOTO, isolation, gas testing,
+competency or inspection records are missing unless visible evidence
+supports that conclusion. Mention these non-visual checks in limitations.
 
-Do not claim that a permit, isolation, gas test, competency,
-harness anchorage or inspection record is absent unless visible
-evidence supports it. Put non-visual checks in limitations.
+Never invent hazards.
 
-If no clear hazard is visible, return no invented findings.
+For each finding, provide a tight bounding box in normalized
+[x, y, width, height] coordinates from 0 to 1.
 
-For every finding, bbox must tightly surround the visible issue
-using normalized image coordinates [x, y, width, height],
-with values from 0 to 1.
+If the hazard cannot be located reliably, use [0, 0, 0, 0].
 
-If the location cannot be bounded reliably, use [0, 0, 0, 0]
-and explain the uncertainty.
+Provide practical corrective actions and potential consequences.
 
-Risk is a preliminary screening category, not a formal risk assessment.
+Risk levels are preliminary screening only, not a formal risk assessment.
 
-Include practical precautions and verification by a competent person.
+Return clear English and Hindi findings.
 
-Language requested: {req.language}
+Language: {req.language}
 
-Return the required structured JSON response only.
+Return structured JSON only.
 """
 
         response = client.models.generate_content(
@@ -230,7 +237,6 @@ Return the required structured JSON response only.
 
         for i, finding in enumerate(data.get("findings", []), start=1):
             finding["id"] = i
-
             bbox = finding.get("bbox", [0, 0, 0, 0])
 
             if (
@@ -244,7 +250,7 @@ Return the required structured JSON response only.
                     max(0, min(1, float(v))) for v in bbox
                 ]
                 finding["bbox"] = [
-                    x, y, min(w, 1 - x), min(h, 1 - y)
+                    x, y, min(w, 1-x), min(h, 1-y)
                 ]
 
             finding["confidence"] = max(
@@ -263,10 +269,11 @@ Return the required structured JSON response only.
         if "429" in error_text or "resource_exhausted" in error_text:
             raise HTTPException(
                 status_code=429,
-                detail="Gemini API usage limit reached. Check your Google AI Studio quota."
+                detail="Gemini usage limit reached. Check your API quota."
             )
 
         raise HTTPException(
             status_code=500,
-            detail="Gemini analysis failed. Check backend logs and API configuration."
+            detail="Gemini analysis failed. Check Render logs."
         )
+        
