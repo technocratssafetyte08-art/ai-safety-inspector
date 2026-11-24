@@ -1,0 +1,9 @@
+{
+  "name": "AI Safety Inspector",
+  "short_name": "Safety Inspector",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#10233f",
+  "icons": []
+}

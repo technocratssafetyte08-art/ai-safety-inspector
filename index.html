@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10233f">
+<title>AI Safety Inspector</title><link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="logo">AI</div><div><strong>SAFETY INSPECTOR</strong><small>WORKPLACE VISUAL RISK SCREENING</small></div></div>
+  <button id="langBtn" class="outline">हिन्दी</button>
+</header>
+<main>
+  <section class="hero">
+    <div><span class="eyebrow" data-i="eyebrow">INDUSTRIAL EHS TOOL</span>
+    <h1 data-i="heading">See the hazard.<br><em>Act before it happens.</em></h1>
+    <p data-i="intro">Capture a workplace photo and generate an AI-assisted hazard screening with marked locations and corrective actions.</p></div>
+    <div class="hero-icon">⌁</div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><span class="step">01</span><h2 data-i="photoTitle">Workplace photograph</h2></div><span class="muted" data-i="private">Use approved site photographs only</span></div>
+    <div class="upload" id="dropzone">
+      <div class="camera">▣</div><h3 data-i="uploadTitle">Add inspection photo</h3>
+      <p data-i="uploadText">Take a picture or choose an image from your device</p>
+      <div class="actions"><label class="primary" for="cameraInput" data-i="camera">Open camera</label><label class="secondary" for="fileInput" data-i="choose">Choose photo</label></div>
+      <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+      <input id="fileInput" type="file" accept="image/*" hidden>
+    </div>
+    <div class="preview-wrap" id="previewWrap" hidden>
+      <div class="preview-head"><strong data-i="preview">Photo preview & hazard markers</strong><button id="removeBtn" class="text-btn" data-i="remove">Remove photo</button></div>
+      <div class="image-stage"><img id="previewImg" alt="Inspection photo"><div id="overlay"></div></div>
+      <p class="hint" data-i="markerHint">Red boxes and numbered markers show AI-estimated hazard locations. Verify every marker against the original scene.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head"><div><span class="step">02</span><h2 data-i="contextTitle">Inspection details</h2></div><span class="muted" data-i="optional">Optional but recommended</span></div>
+    <div class="fields">
+      <label><span data-i="site">Site / Plant</span><input id="site" placeholder="e.g. Tata Steel"></label>
+      <label><span data-i="department">Department</span><input id="department" placeholder="e.g. TSCR Caster"></label>
+      <label><span data-i="location">Exact work location</span><input id="location" placeholder="e.g. Caster platform"></label>
+      <label><span data-i="contractor">Contractor / Agency</span><input id="contractor" placeholder="e.g. TECHNOCRATS"></label>
+    </div>
+    <div class="notice"><b data-i="privacyTitle">Photo handling</b><span data-i="privacyText">The selected image is sent to your configured AI backend for analysis. Obtain site authorization and avoid uploading identifiable people or restricted plant information unless approved.</span></div>
+    <button id="analyseBtn" class="primary full" disabled><span>✦</span> <span data-i="analyse">Analyse photograph with AI</span></button>
+    <p id="status" class="status" role="status"></p>
+  </section>
+
+  <section id="results" class="panel" hidden>
+    <div class="section-head"><div><span class="step">03</span><h2 data-i="resultsTitle">AI screening results</h2></div><span id="riskPill" class="risk-pill">—</span></div>
+    <p id="summary" class="summary"></p><div id="findings"></div>
+    <div class="notice warning"><b data-i="verifyTitle">Mandatory human verification</b><span data-i="verifyText">This is an AI-assisted visual screening, not a statutory inspection or final risk assessment. A competent person must verify the findings and controls on site.</span></div>
+    <div class="actions report-actions"><button id="printBtn" class="primary">▤ <span data-i="pdf">Print / Save PDF report</span></button><button id="newBtn" class="secondary" data-i="new">New inspection</button></div>
+  </section>
+  <footer><span>AI SAFETY INSPECTOR · VERSION 0.1</span><span data-i="footer">Preliminary screening aid — competent-person verification required</span></footer>
+</main>
+<script src="app.js"></script>
+</body></html>
